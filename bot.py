@@ -1,149 +1,59 @@
-#!/usr/bin/env python3
-
 import asyncio
 import json
 import os
 import sys
 import getpass
-#from PIL import Image
-#import aiofiles.os
-#import magic
 
-from nio import AsyncClient, LoginResponse, UploadResponse
+from nio import AsyncClient, MatrixRoom, RoomMessageText
 
-CONFIG_FILE = "credentials.json"
+ROOM_ID =  ***JOINED_ROOM_ID*** #NOTE
+client = AsyncClient(***BOT_HOMESERVER***, #NOTE
+                     ***BOT_USER_ID***) #NOTE
 
-# Check out main() below to see how it's done.
-
-
-def write_details_to_disk(resp: LoginResponse, homeserver) -> None:
-    """Writes the required login details to disk so we can log in later without
-    using a password.
-
-    Arguments:
-        resp {LoginResponse} -- the successful client login response.
-        homeserver -- URL of homeserver, e.g. "https://matrix.example.org"
-    """
-    # open the config file in write-mode
-    with open(CONFIG_FILE, "w") as f:
-        # write the login details to disk
-        json.dump(
-            {
-                "homeserver": homeserver,  # e.g. "https://matrix.example.org"
-                "user_id": resp.user_id,  # e.g. "@user:example.org"
-                "device_id": resp.device_id,  # device ID, 10 uppercase letters
-                "access_token": resp.access_token  # cryptogr. access token
-            },
-            f
-        )
-
-
-async def send_image(client, room_id, image):
-    """Send image to toom.
-
-    Arguments:
-    ---------
-    client : Client
-    room_id : str
-    image : str, file name of image
-
-    This is a working example for a JPG image.
-        "content": {
-            "body": "someimage.jpg",
-            "info": {
-                "size": 5420,
-                "mimetype": "image/jpeg",
-                "thumbnail_info": {
-                    "w": 100,
-                    "h": 100,
-                    "mimetype": "image/jpeg",
-                    "size": 2106
-                },
-                "w": 100,
-                "h": 100,
-                "thumbnail_url": "mxc://example.com/SomeStrangeThumbnailUriKey"
-            },
-            "msgtype": "m.image",
-            "url": "mxc://example.com/SomeStrangeUriKey"
-        }
-
-    """
-    #mime_type = magic.from_file(image, mime=True)  # e.g. "image/jpeg"
-    #if not mime_type.startswith("image/"):
-    #    print("Drop message because file does not have an image mime type.")
-    #    return
-
-    #im = Image.open(image)
-    #(width, height) = im.size  # im.size returns (width,height) tuple
-
-    ## first do an upload of image, then send URI of upload to room
-    #file_stat = await aiofiles.os.stat(image)
-    #async with aiofiles.open(image, "r+b") as f:
-    #    resp, maybe_keys = await client.upload(
-    #        f,
-    #        content_type=mime_type,  # image/jpeg
-    #        filename=os.path.basename(image),
-    #        filesize=file_stat.st_size)
-    #if (isinstance(resp, UploadResponse)):
-    #    print("Image was uploaded successfully to server. ")
-    #else:
-    #    print(f"Failed to upload image. Failure response: {resp}")
-
-    content = {
-        "body": os.path.basename(image),  # descriptive title
-        "info": {
-            "size": file_stat.st_size,
-            "mimetype": mime_type,
-            "thumbnail_info": None,  # TODO
-            "w": width,  # width in pixel
-            "h": height,  # height in pixel
-            "thumbnail_url": None,  # TODO
-        },
-        "msgtype": "m.image",
-        "url": resp.content_uri,
-    }
-
-    try:
+async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
+    if room.room_id == client.room_id and event.sender != client.user_id:
         await client.room_send(
-            room_id,
+            room_id=client.room_id,
             message_type="m.room.message",
-            content=content
+            content = {
+                "msgtype":"m.text",
+                "body": f"Message received in room {room.display_name}\n"\
+                        f"{room.user_name(event.sender)} | {event.body}"
+            }
         )
-        print("Image was sent successfully")
-    except Exception:
-        print(f"Image send of file {image} failed.")
-
 
 async def main() -> None:
-    # Otherwise the config file exists, so we'll use the stored credentials
-    # open the file in read-only mode
-    client = AsyncClient("***HOMESERVER***", "***MATRIX_USER***") #NOTE
-    client.access_token = "***ACCESS_TOKEN***" #NOTE
-    
-    #client.user_id = config['user_id']
-    #client.device_id = config['device_id']
+    client.access_token = ***BOT_ACCESS_TOKEN*** #NOTE
 
-    # Now we can send messages as the user
-    room_id = "***ROOM_ID***" #NOTE
-    #room_id = input(f"Enter room id for image message: [{room_id}] ")
+    client.add_event_callback(message_callback, RoomMessageText)
+    client.room_id = ROOM_ID
 
-    #image = "exampledir/samplephoto.jpg"
-    #image = input(f"Enter file name of image to send: [{image}] ")
+    # If you made a new room and haven't joined as that user, you can use
+    # await client.join("your-room-id")
 
-    #await send_image(client, room_id, image)
+    # TODO enable access_token-only login
+    await client.login(***BOT_PASSWORD***) #NOTE 
+    print("Logged in")
+
     await client.room_send(
-        room_id = room_id,
+        # Watch out! If you join an old room you'll see lots of old messages
+        room_id=client.room_id,
         message_type="m.room.message",
         content = {
-            "msgtype":"m.text",
-            "body":"Moi"
+            "msgtype": "m.text",
+            #"body": "Moi t.botti"
         }
     )
 
-    client.login()
-    print("Logged in using stored credentials. Sent a test message.")
+    await client.sync_forever(timeout=30000) # milliseconds
 
-    # Close the client connection after we are done with it.
-    await client.close()
+# TODO 
+#if __name__ == "__main__":
+#    try:
+#        asyncio.run( 
+#            main() 
+#        )
+#    except (KeyboardInterrupt):
+#        pass
 
 asyncio.get_event_loop().run_until_complete(main())
