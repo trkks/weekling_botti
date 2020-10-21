@@ -9,6 +9,8 @@ import datetime
 from nio import (AsyncClient, MatrixRoom, RoomMessageText, LoginResponse,
                  LoginError)
 
+import logic
+
 # TODO add logging
 # TODO handle logouts
 
@@ -39,20 +41,32 @@ def pass_to_message_callback(client):
                 msg = event.body
                 print("event.body: {}".format(event.body))
                 if len(msg) > 1 and msg[0] == "!":
-                    msg = msg.split(" ")
-                    print("msg: {}".format(msg))
-                    if len(msg) > 0 and len(msg[0]) > 0 and msg[0][1:] == "close":
-                        print("Calling client.close()")
-                        await client.close()
-                    else: 
+                    # Default message
+                    msg_to_send = "Message received in room {}\n {} | {}" \
+                                  .format(room.display_name,
+                                          room.user_name(event.sender),
+                                          event.body)
+
+                    msg = msg[1:]
+                    command = list(filter(lambda x: x.strip(), msg.split(" ")))
+                    print("command: {}".format(msg))
+
+                    # Choose the logic
+                    if command[0] == "aloita":
+                        msg_to_send = logic.aloita(command[1:], room.room_id)
+                    elif command[0] == "tulokset":
+                        msg_to_send = logic.tulokset(command[1:], room.room_id)
+                    #if len(msg) > 0 and len(msg[0]) > 0 and msg[0][1:] == "close":
+                    #    print("Calling client.close()")
+                    #    await client.close()
+
+                    if msg_to_send.strip():
                         await client.room_send(
                             room_id=client.room_id,
                             message_type="m.room.message",
                             content = {
                                 "msgtype":"m.text",
-                                "body": "Message received in room {}\n"
-                                        .format(room.display_name) +
-                                        f"{room.user_name(event.sender)} | {event.body}"
+                                "body": msg_to_send
                             }
                         )
 
