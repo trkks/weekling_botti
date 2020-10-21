@@ -4,6 +4,7 @@ import io
 #import os
 import sys
 import getpass
+import datetime
 
 from nio import (AsyncClient, MatrixRoom, RoomMessageText, LoginResponse,
                  LoginError)
@@ -12,28 +13,50 @@ from nio import (AsyncClient, MatrixRoom, RoomMessageText, LoginResponse,
 # TODO handle logouts
 
 LOGIN_FILE = "bot_login_info.json"
-client = None
 
-async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
-    # TODO Listen to all joined rooms -> one bot to serve them all?
-    #FIXME Crashes here because client == None, as set in global scope
-    if room.room_id == client.room_id and event.sender != client.user_id:
-        msg = event.body
-        if len(msg) > 1 and msg[0] == "!":
-            msg = msg.split(" ")
-            if len(msg) > 0 and len(msg[0]) > 0 and msg[1:] == "close":
-                await client.close()
-            else: 
-                await client.room_send(
-                    room_id=client.room_id,
-                    message_type="m.room.message",
-                    content = {
-                        "msgtype":"m.text",
-                        "body": "Message received in room {}\n"
-                                .format(room.display_name) +
-                                f"{room.user_name(event.sender)} | {event.body}"
-                    }
-                )
+# Hemppa-hack-copypaste
+jointime = None  # HACKHACKHACK to avoid running old commands after join
+join_hack_time = 5  # Seconds
+
+def hemppa_hack(body):
+    global jointime
+    # HACK to ignore messages for some time after joining.
+    if jointime:
+        if (datetime.datetime.now() - jointime).seconds < join_hack_time:
+            print(f"Waiting for join delay, ignoring message: {body}")
+            return False
+        jointime = None 
+    return True
+# end of copypaste
+
+
+def pass_to_message_callback(client):
+
+    async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
+        if hemppa_hack(event.body):
+            # TODO Listen to all joined rooms -> one bot to serve them all?
+            if room.room_id == client.room_id and event.sender != client.user_id:
+                msg = event.body
+                print("event.body: {}".format(event.body))
+                if len(msg) > 1 and msg[0] == "!":
+                    msg = msg.split(" ")
+                    print("msg: {}".format(msg))
+                    if len(msg) > 0 and len(msg[0]) > 0 and msg[0][1:] == "close":
+                        print("Calling client.close()")
+                        await client.close()
+                    else: 
+                        await client.room_send(
+                            room_id=client.room_id,
+                            message_type="m.room.message",
+                            content = {
+                                "msgtype":"m.text",
+                                "body": "Message received in room {}\n"
+                                        .format(room.display_name) +
+                                        f"{room.user_name(event.sender)} | {event.body}"
+                            }
+                        )
+
+    return message_callback
 
 
 def load_bot_info():
@@ -51,6 +74,10 @@ def load_bot_info():
 
 
 async def main() -> None:
+    # NOTE Hemppa-hack
+    global jointime
+    jointime = datetime.datetime.now()
+
     bot_info = load_bot_info()
 
     """
@@ -84,8 +111,7 @@ async def main() -> None:
         #client.device_id = bot_info["device_id"]
 
 
-    #FIXME client == None in message_callback -> read more about asyncio
-    client.add_event_callback(message_callback, RoomMessageText)
+    client.add_event_callback(pass_to_message_callback(client),RoomMessageText)
 
     # Send initial greeting to rooms bot has joined
     # NOTE Will crash here if login failed
@@ -105,7 +131,7 @@ async def main() -> None:
     # If you made a new room and haven't joined as that user, you can use
     # await client.join("your-room-id")
 
-    await client.sync_forever(timeout=30000) # milliseconds
+    await client.sync_forever(timeout=30000, full_state=False) # milliseconds
 
 
 if __name__ == "__main__":
