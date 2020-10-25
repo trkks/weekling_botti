@@ -6,6 +6,7 @@ import sys
 import getpass
 import datetime
 
+from pymongo import MongoClient
 from nio import (AsyncClient, MatrixRoom, RoomMessageText, LoginResponse,
                  LoginError)
 
@@ -17,11 +18,11 @@ import logic
 LOGIN_FILE = "bot_login_info.json"
 
 # Hemppa-hack-copypaste
-jointime = None  # HACKHACKHACK to avoid running old commands after join
-join_hack_time = 5  # Seconds
+#jointime = None 
+#join_hack_time = 5  # Seconds
 
-def hemppa_hack(body):
-    global jointime
+def hemppa_hack(body, jointime, join_hack_time):
+    #global jointime
     # HACK to ignore messages for some time after joining.
     if jointime:
         if (datetime.datetime.now() - jointime).seconds < join_hack_time:
@@ -32,10 +33,10 @@ def hemppa_hack(body):
 # end of copypaste
 
 
-def pass_to_message_callback(client):
+def pass_to_message_callback(client, db, jointime, join_hack_time):
 
     async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
-        if hemppa_hack(event.body):
+        if hemppa_hack(event.body, jointime, join_hack_time):
             # TODO Listen to all joined rooms -> one bot to serve them all?
             if room.room_id == client.room_id and event.sender != client.user_id:
                 msg = event.body
@@ -53,9 +54,11 @@ def pass_to_message_callback(client):
 
                     # Choose the logic
                     if command[0] == "aloita":
-                        msg_to_send = logic.aloita(command[1:], room.room_id)
+                        msg_to_send = logic.aloita(
+                            command[1:], room.room_id, db)
                     elif command[0] == "tulokset":
-                        msg_to_send = logic.tulokset(command[1:], room.room_id)
+                        msg_to_send = logic.tulokset(
+                            command[1:], room.room_id, db)
                     #if len(msg) > 0 and len(msg[0]) > 0 and msg[0][1:] == "close":
                     #    print("Calling client.close()")
                     #    await client.close()
@@ -89,10 +92,19 @@ def load_bot_info():
 
 async def main() -> None:
     # NOTE Hemppa-hack
-    global jointime
-    jointime = datetime.datetime.now()
+    jointime = datetime.datetime.now() # HACKHACKHACK to avoid running old 
+                                       # commands after join
+    join_hack_time = 5  # Seconds
 
     bot_info = load_bot_info()
+
+    mongo_client = MongoClient("mongodb+srv://{}:{}@{}/weekling?retryWrites=true&w=majority".format(bot_info["db_username"], 
+               bot_info["db_password"],
+               bot_info["db_hostname"]))
+    db = mongo_client.testi_botti # TODO Select correct database
+    #test_collection = db.test_collection # TESTING DB
+    #test_doc = test_collection.find_one() # TESTING DB
+    #print("Palautunut doc: {}".format(test_doc)) # TESTING DB
 
     """
     Create the client-object with correct info and login 
@@ -102,15 +114,12 @@ async def main() -> None:
     client = AsyncClient(bot_info["homeserver"], bot_info["user_id"])
     #TODO Set all the rooms bot has previously been invited to and to
     # which it will listen 
-    client.room_id = bot_info["joined_rooms"][0] #NOTE
-    print(f"DEBUG: {client.room_id}")
-    # NOTE bot-functionality commented out as not to accidentally do stupid
-    # stuff on matrix rooms
-    # Add the functionality for reacting to matrix-events
-
-    # Ask password from command line
+    client.room_id = bot_info["joined_rooms"][0] #TODO
+    #print(f"DEBUG: {client.room_id}")
+    
+    # Ask password from command line, press enter to use stored access token
     password = getpass.getpass()
-    if password: ##isinstance(response, LoginResponse):
+    if password: 
         response = await client.login(password)
         # Save info to file for future use
         bot_info["access_token"] = response.access_token
@@ -120,12 +129,15 @@ async def main() -> None:
                 fp.write(json.dumps(bot_info))
         except OSError as e:
             print(f"Writing login-info failed: {e}")
-    else: #"Login" with access token
+    else: 
         client.access_token = bot_info["access_token"]
         #client.device_id = bot_info["device_id"]
 
 
-    client.add_event_callback(pass_to_message_callback(client),RoomMessageText)
+    client.add_event_callback(
+        pass_to_message_callback(client, db, jointime, join_hack_time)
+        , RoomMessageText
+    )
 
     # Send initial greeting to rooms bot has joined
     # NOTE Will crash here if login failed
