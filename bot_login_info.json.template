@@ -1,0 +1,9 @@
+{ 
+  "homeserver"  : "", 
+  "user_id"     : "",
+  "joined_rooms": [""],
+  "access_token": "", 
+  "db_username" : "", 
+  "db_password" : "", 
+  "db_hostname" : ""
+}
