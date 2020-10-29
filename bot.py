@@ -101,7 +101,7 @@ async def main() -> None:
     mongo_client = MongoClient("mongodb+srv://{}:{}@{}/weekling?retryWrites=true&w=majority".format(bot_info["db_username"], 
                bot_info["db_password"],
                bot_info["db_hostname"]))
-    db = mongo_client.testi_botti # TODO Select correct database
+    db = mongo_client.weekling # TODO Select correct database
     #test_collection = db.test_collection # TESTING DB
     #test_doc = test_collection.find_one() # TESTING DB
     #print("Palautunut doc: {}".format(test_doc)) # TESTING DB

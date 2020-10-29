@@ -9,7 +9,7 @@ def aloita(args, room_id, db):
         "event_name": event_name, # TODO ks ylempi kommentti
         "times": []
     })
-    host_name = "lipaston_lappari.fi" # TODO get hostname from ngrok
+    host_name = "e6975d60ee4d.ngrok.io" # TODO get hostname from ngrok
     query_string = "?event={}&room={}".format(event_name, room_id)
 
     return "Varaa tästä tapahtumaan {} -> http://{}{}" \
@@ -22,7 +22,7 @@ def tulokset(args, room_id, db):
 
     event_name = "".join(args)
     # TODO Get list of free times from the database for the event in the room
-    event_doc = db.testi_botti.find_one({ "event_name": event_name })
+    event_doc = db.testi_botti.find_one()
     
     if event_doc is not None:
         #times = ["10112020T1500", "10112020T1600"]
@@ -31,5 +31,5 @@ def tulokset(args, room_id, db):
             return "Ensimmäinen vapaa aika tapahtumalle {} on: {}" \
                    .format(event_name, times[0])
 
-    return "Aikoja ei löytynyt tapahtumalle {}".format(event_name)
+    return str(event_doc)
 
