@@ -9,8 +9,7 @@ verify_ssl = true
 matrix-nio = "*"
 pymongo = "*"
 dnspython = "*"
-pyngrok = "*"
+#pyngrok = "*"
 
 [requires]
-python_version = "3.7"
-#python_version = "3.8" # Servulle, onko suurta eroa?
+python_version = "3.8"
