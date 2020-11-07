@@ -12,15 +12,11 @@ from nio import (AsyncClient, MatrixRoom, RoomMessageText, LoginResponse,
 
 import logic
 
-# TODO add logging
 # TODO handle logouts
 
 LOGIN_FILE = "bot_login_info.json"
 
 # Hemppa-hack-copypaste
-#jointime = None 
-#join_hack_time = 5  # Seconds
-
 def hemppa_hack(body, jointime, join_hack_time):
     #global jointime
     # HACK to ignore messages for some time after joining.
@@ -49,19 +45,19 @@ def pass_to_message_callback(client, db, jointime, join_hack_time):
                                           event.body)
 
                     msg = msg[1:]
-                    command = list(filter(lambda x: x.strip(), msg.split(" ")))
+                    try:
+                        command = msg[0:msg.index(" ")] 
+                        args = msg[len(command):]
+                    except ValueError:
+                        command = None
+                        args = ""
                     print("command: {}".format(msg))
 
                     # Choose the logic
-                    if command[0] == "aloita":
-                        msg_to_send = logic.aloita(
-                            command[1:], room.room_id, db)
-                    elif command[0] == "tulokset":
-                        msg_to_send = logic.tulokset(
-                            command[1:], room.room_id, db)
-                    #if len(msg) > 0 and len(msg[0]) > 0 and msg[0][1:] == "close":
-                    #    print("Calling client.close()")
-                    #    await client.close()
+                    if command == "aloita":
+                        msg_to_send = logic.aloita(args, room.room_id, db)
+                    elif command == "tulokset":
+                        msg_to_send = logic.tulokset(args, room.room_id, db)
 
                     if msg_to_send.strip():
                         await client.room_send(
@@ -99,13 +95,10 @@ async def main() -> None:
     bot_info = load_bot_info()
 
     mongo_client = MongoClient("mongodb+srv://{}:{}@{}/weekling?retryWrites=true&w=majority".format(bot_info["db_username"], 
-               bot_info["db_password"],
-               bot_info["db_hostname"]))
-    db = mongo_client.weekling # TODO Select correct database
-    #test_collection = db.test_collection # TESTING DB
-    #test_doc = test_collection.find_one() # TESTING DB
-    #print("Palautunut doc: {}".format(test_doc)) # TESTING DB
-
+                    bot_info["db_password"],
+                    bot_info["db_hostname"]))
+    db = mongo_client.weekling  
+    
     """
     Create the client-object with correct info and login 
     if an access token is not found, login with password 
@@ -115,7 +108,6 @@ async def main() -> None:
     #TODO Set all the rooms bot has previously been invited to and to
     # which it will listen 
     client.room_id = bot_info["joined_rooms"][0] #TODO
-    #print(f"DEBUG: {client.room_id}")
     
     # Ask password from command line, press enter to use stored access token
     password = getpass.getpass()

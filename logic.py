@@ -1,35 +1,54 @@
+from urllib.parse import quote_plus
+from datetime import datetime
+from itertools import groupby
+import scheduler
+import os
+import io
+
+
+NGROK_FILE = "ngrokosoite.txt"
+
 def aloita(args, room_id, db):
     # Name for event must be specified
-    if len(args) == 0:
+    event_name = args.strip()
+    if len(event_name) == 0:
         return ""
 
-    event_name = "".join(args)
-    times = db.testi_botti # NOTE Päättäkää collectionien arkkitehtuurista
-    times.insert_one({
-        "event_name": event_name, # TODO ks ylempi kommentti
+    db.objects.insert_one({
+        "room_id": room_id,
+        "event_name": event_name,
         "times": []
     })
-    host_name = "e6975d60ee4d.ngrok.io" # TODO get hostname from ngrok
-    query_string = "?event={}&room={}".format(event_name, room_id)
 
-    return "Varaa tästä tapahtumaan {} -> http://{}{}" \
+    # Get ngrok url
+    with io.open(NGROK_FILE, "r", encoding="utf-8") as fp:
+        host_name = fp.readline()
+
+    # Pass meta-info to server
+    query_string = "?event={}&room={}".format(quote_plus(event_name),
+                                              quote_plus(room_id))
+
+    return "Varaa tästä tapahtumaan {} -> {}{}" \
            .format(event_name, host_name, query_string)
 
 def tulokset(args, room_id, db):
     # Name for event must be specified
-    if len(args) == 0:
+    event_name = args.strip()
+    if len(event_name) == 0:
         return ""
 
-    event_name = "".join(args)
-    # TODO Get list of free times from the database for the event in the room
-    event_doc = db.testi_botti.find_one()
-    
-    if event_doc is not None:
-        #times = ["10112020T1500", "10112020T1600"]
-        times = event_doc["times"]
-        if len(times) > 0:
-            return "Ensimmäinen vapaa aika tapahtumalle {} on: {}" \
-                   .format(event_name, times[0])
+    event_doc = db.objects.find_one({
+        "room_id": room_id,
+        "event_name": event_name
+    })
 
-    return str(event_doc)
+    if event_doc is not None:
+        times = event_doc["times"]
+        result_time = scheduler.my_scheduler(times)
+        if result_time is not None:
+            return "Ensimmäinen vapaa aika tapahtumalle {} on: {}" \
+                   .format(event_name, result_time)
+        return "Ei löydy yhteistä aikaa"
+
+    return "Ei löydy tapahtumaa huoneesta"
 
