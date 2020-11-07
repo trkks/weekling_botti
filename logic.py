@@ -6,7 +6,7 @@ import os
 import io
 
 
-NGROK_FILE = "ngrokosoite.txt"
+NGROK_FILE = "../weekling-web/webback/ngrokosoite.txt"
 
 def aloita(args, room_id, db):
     # Name for event must be specified
