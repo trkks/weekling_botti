@@ -22,7 +22,7 @@ def aloita(args, room_id, db):
 
     # Get ngrok url
     with io.open(NGROK_FILE, "r", encoding="utf-8") as fp:
-        host_name = fp.readline()
+        host_name = fp.readline().strip()
 
     # Pass meta-info to server
     query_string = "?event={}&room={}".format(quote_plus(event_name),

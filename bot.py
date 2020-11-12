@@ -7,8 +7,8 @@ import getpass
 import datetime
 
 from pymongo import MongoClient
-from nio import (AsyncClient, MatrixRoom, RoomMessageText, LoginResponse,
-                 LoginError)
+from nio import (AsyncClient, MatrixRoom, RoomMessageText, InviteMemberEvent, 
+                 LoginResponse, LoginError, JoinError)
 
 import logic
 
@@ -18,7 +18,6 @@ LOGIN_FILE = "bot_login_info.json"
 
 # Hemppa-hack-copypaste
 def hemppa_hack(body, jointime, join_hack_time):
-    #global jointime
     # HACK to ignore messages for some time after joining.
     if jointime:
         if (datetime.datetime.now() - jointime).seconds < join_hack_time:
@@ -29,12 +28,38 @@ def hemppa_hack(body, jointime, join_hack_time):
 # end of copypaste
 
 
+def pass_to_invite_callback(client):
+
+    async def invite_callback(room, event):
+        result = await client.join(room.room_id)
+        if type(result) == JoinError:
+            print(f"Error joining room {room.room_id}")
+        else:
+            # Send initial greeting to rooms bot has joined
+            # NOTE Will crash here if login failed
+            await client.room_send(
+                # Watch out! If you join an old room you'll see lots of old
+                # messages 
+                room_id=room.room_id,
+                message_type="m.room.message",
+                content = {
+                    "msgtype": "m.text",
+                    "body": "Terve t.botti"
+                }
+            ) 
+    
+            print(f"Joining room '{room.display_name}'({room.room_id})"\
+                  f"invited by '{event.sender}'")
+
+    return invite_callback
+
 def pass_to_message_callback(client, db, jointime, join_hack_time):
 
     async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
         if hemppa_hack(event.body, jointime, join_hack_time):
             # TODO Listen to all joined rooms -> one bot to serve them all?
-            if room.room_id == client.room_id and event.sender != client.user_id:
+            #if room.room_id == client.room_id and event.sender != client.user_id:
+            if room.room_id in client.rooms.keys() and event.sender != client.user_id:
                 msg = event.body
                 print("event.body: {}".format(event.body))
                 if len(msg) > 1 and msg[0] == "!":
@@ -61,7 +86,7 @@ def pass_to_message_callback(client, db, jointime, join_hack_time):
 
                     if msg_to_send.strip():
                         await client.room_send(
-                            room_id=client.room_id,
+                            room_id=room.room_id,
                             message_type="m.room.message",
                             content = {
                                 "msgtype":"m.text",
@@ -105,9 +130,6 @@ async def main() -> None:
     Return the client and login-response
     """
     client = AsyncClient(bot_info["homeserver"], bot_info["user_id"])
-    #TODO Set all the rooms bot has previously been invited to and to
-    # which it will listen 
-    client.room_id = bot_info["joined_rooms"][0] #TODO
     
     # Ask password from command line, press enter to use stored access token
     password = getpass.getpass()
@@ -125,25 +147,17 @@ async def main() -> None:
         client.access_token = bot_info["access_token"]
         #client.device_id = bot_info["device_id"]
 
-
     client.add_event_callback(
-        pass_to_message_callback(client, db, jointime, join_hack_time)
-        , RoomMessageText
+        pass_to_invite_callback(client),
+        InviteMemberEvent
     )
 
-    # Send initial greeting to rooms bot has joined
-    # NOTE Will crash here if login failed
-    await client.room_send(
-        # Watch out! If you join an old room you'll see lots of old
-        # messages 
-        room_id=client.room_id,
-        message_type="m.room.message",
-        content = {
-            "msgtype": "m.text",
-            "body": "Moi t.botti"
-        }
-    ) 
-    print(f"Logged in as {client}, sent a test message to {client.room_id}")
+    client.add_event_callback(
+        pass_to_message_callback(client, db, jointime, join_hack_time),
+        RoomMessageText
+    )
+
+    print(f"Logged in as {client}")
 
     # This is from the tutorial:
     # If you made a new room and haven't joined as that user, you can use
