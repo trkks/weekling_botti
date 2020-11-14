@@ -43,11 +43,13 @@ def tulokset(args, room_id, db):
     })
 
     if event_doc is not None:
-        times = event_doc["times"]
+        #times = event_doc["times"] # use this when db has "pure" list of lists
+        times = list(map(lambda obj: obj["date"], event_doc["times"]))
         result_time = scheduler.my_scheduler(times)
         if result_time is not None:
-            return "Ensimmäinen vapaa aika tapahtumalle {} on: {}" \
-                   .format(event_name, result_time)
+            return "Ensimmäinen vapaa aika tapahtumalle {} on: {}\n" \
+                   "Osallistujia {} kpl" 
+                   .format(event_name, result_time, len() # TODO
         return "Ei löydy yhteistä aikaa"
 
     return "Ei löydy tapahtumaa huoneesta"

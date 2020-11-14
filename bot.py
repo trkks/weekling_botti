@@ -112,25 +112,37 @@ def load_bot_info():
 
 
 async def main() -> None:
-    # NOTE Hemppa-hack
-    jointime = datetime.datetime.now() # HACKHACKHACK to avoid running old 
-                                       # commands after join
-    join_hack_time = 5  # Seconds
-
     bot_info = load_bot_info()
 
     mongo_client = MongoClient("mongodb+srv://{}:{}@{}/weekling?retryWrites=true&w=majority".format(bot_info["db_username"], 
                     bot_info["db_password"],
                     bot_info["db_hostname"]))
     db = mongo_client.weekling  
+
     
+    # NOTE Hemppa-hack
+    jointime = datetime.datetime.now() # HACKHACKHACK to avoid running old 
+                                       # commands after join
+    join_hack_time = 10  # Seconds
+
     """
     Create the client-object with correct info and login 
     if an access token is not found, login with password 
     Return the client and login-response
     """
     client = AsyncClient(bot_info["homeserver"], bot_info["user_id"])
-    
+   
+    client.add_event_callback(
+        pass_to_invite_callback(client),
+        InviteMemberEvent
+    )
+
+    client.add_event_callback(
+        pass_to_message_callback(client, db, jointime, join_hack_time),
+        RoomMessageText
+    )
+
+ 
     # Ask password from command line, press enter to use stored access token
     password = getpass.getpass()
     if password: 
@@ -146,16 +158,6 @@ async def main() -> None:
     else: 
         client.access_token = bot_info["access_token"]
         #client.device_id = bot_info["device_id"]
-
-    client.add_event_callback(
-        pass_to_invite_callback(client),
-        InviteMemberEvent
-    )
-
-    client.add_event_callback(
-        pass_to_message_callback(client, db, jointime, join_hack_time),
-        RoomMessageText
-    )
 
     print(f"Logged in as {client}")
 

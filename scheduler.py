@@ -38,6 +38,13 @@ def test_scheduler(scheduler):
     assert scheduler([[d1],[d2],[d3]]) == None, \
            "Different dates in every list did not return `None`"
 
+    # TODO
+    """
+    - jos tietokannassa times == [ [d1,d1,d1], [], [] ]
+      niin tällähetkellä d1 tulkitaan kaikille vastanneille sopivaksi ajaksi
+    """
+
+
     success("Base cases")
     #####################
 
@@ -69,12 +76,20 @@ def my_scheduler(entries):
     # Pick the groups that have entry_count worth of dates
     # TODO Should duplicate dates in entries be checked, 
     #      eg. person1_entry == [d1,d1] -> Error?
-    check_count = lambda x: x[0] if len(list(x[1])) >= entry_count else None
+    # TODO
+    counts = []
+    def check_count(x):
+        count = len(list(x[1]))
+        counts.append(count)
+        if count >= entry_count or count > 1:
+            return x[0] 
+        return None
+    # TODO
     shared_dates = map(check_count, date_groups)
     # Remove `None`s
     shared_dates = list(filter(bool, shared_dates))
     # Select the first date TODO specify first in *list* or in *time*?
-    return shared_dates[0] \
+    return (shared_dates[0] \
            if len(shared_dates) > 0 \
            else None
 
