@@ -47,8 +47,9 @@ def tulokset(args, room_id, db):
         result_time = scheduler.my_scheduler(times)
         if result_time is not None:
             return "Ensimmäinen vapaa aika tapahtumalle {} on: {}\n" \
-                   "Osallistujia {} kpl" \
-                   .format(event_name, result_time, -1) # TODO
+                   "Osallistujia {}/{}" \
+                   .format(event_name, result_time[0], result_time[1],
+                           len(times))
         return "Ei löydy yhteistä aikaa"
 
     return "Ei löydy tapahtumaa huoneesta"
