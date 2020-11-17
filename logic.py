@@ -44,7 +44,7 @@ def tulokset(args, room_id, db):
 
     if event_doc is not None:
         times = list(map(object_to_local_datelist, event_doc["times"]))
-        result_time = scheduler.my_scheduler(times)
+        result_time = scheduler.scheduler(times)
         if result_time is not None:
             return "Ensimmäinen vapaa aika tapahtumalle {} on: {}\n" \
                    "Osallistujia {}/{}" \

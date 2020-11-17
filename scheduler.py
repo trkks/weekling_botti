@@ -1,11 +1,10 @@
 from datetime import datetime
 from itertools import (chain, groupby)
 
-def test_scheduler(scheduler):
-    # A shared printing pattern for test-passing
-    success = lambda s: print(f"Testing '{s}' - PASSED")
+# A shared printing pattern for test-passing
+success = lambda s: print(f"Testing '{s}' - PASSED")
 
-
+def test_scheduler():
     ### START OF TESTS ###
 
     # Base cases
@@ -41,7 +40,6 @@ def test_scheduler(scheduler):
     assert scheduler([ [d1,d1,d1], [], [] ]) == None, \
            "Amount of entries is not equivalent to amount of 'shared' date"
 
-
     success("Base cases")
     #####################
 
@@ -54,10 +52,31 @@ def test_scheduler(scheduler):
     success("Time-specific cases")
     ##############################
 
-    print("All tests done.")
+    print("All SCHEDULER tests done.")
+
+def test_find_spans():
+    d1 = datetime.fromisoformat("2020-11-03T12:00:00.000+00:00")
+    d2 = datetime.fromisoformat("2020-11-03T13:00:00.000+00:00")
+    d3 = datetime.fromisoformat("2020-11-03T14:00:00.000+00:00")
+    assert find_spans([d1,d2,d3], 2) == [(d1,d2), (d2,d3)]
+
+    d4 = datetime.fromisoformat("2020-11-04T14:00:00.000+00:00")
+    assert find_spans([d1,d2,d4], 2) == [(d1,d2)]
 
 
-def my_scheduler(entries):
+def find_spans(times, hours=1):
+    daily_times = groupby(times, key=lambda d: d.day)
+    daily_times = [(k, sorted(list(g))) for k,g in daily_times]
+    
+    for (day, timesofday) in daily_times:
+        for (left, right) in zip(range(len(timesofday)-1),range(1,len(timesofday))): 
+            pass # NOTE KESKEN  
+             
+
+    return [] # TODO
+
+
+def scheduler(entries, hours=1):
     # Remove duplicates from different entries
     all_dates = [list(set(user_entry)) for user_entry in entries]
     # Flatten the list of lists of dates, 
@@ -80,4 +99,5 @@ def my_scheduler(entries):
 
 
 if __name__ == "__main__":  
-    test_scheduler(my_scheduler)
+    test_scheduler()
+    test_find_spans()
