@@ -132,8 +132,12 @@ async def main() -> None:
     client = AsyncClient(bot_info["homeserver"], bot_info["user_id"])
     
     # Ask password from command line, press enter to use stored access token
-    password = getpass.getpass()
-    if password: 
+    access_token = bot_info["access_token"]
+    if len(access_token) != 0: 
+        client.access_token = access_token
+        #client.device_id = bot_info["device_id"]
+    else: 
+        password = getpass.getpass()
         response = await client.login(password)
         # Save info to file for future use
         bot_info["access_token"] = response.access_token
@@ -143,9 +147,6 @@ async def main() -> None:
                 fp.write(json.dumps(bot_info))
         except OSError as e:
             print(f"Writing login-info failed: {e}")
-    else: 
-        client.access_token = bot_info["access_token"]
-        #client.device_id = bot_info["device_id"]
 
     client.add_event_callback(
         pass_to_invite_callback(client),
