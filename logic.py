@@ -1,5 +1,5 @@
 from urllib.parse import quote_plus
-from datetime import datetime
+from datetime import datetime, timezone
 from itertools import groupby
 import scheduler
 import os
@@ -43,12 +43,26 @@ def tulokset(args, room_id, db):
     })
 
     if event_doc is not None:
-        times = event_doc["times"]
-        result_time = scheduler.my_scheduler(times)
+        times = list(map(object_to_local_datelist, event_doc["times"]))
+        result_time = scheduler.scheduler(times)
         if result_time is not None:
-            return "Ensimmäinen vapaa aika tapahtumalle {} on: {}" \
-                   .format(event_name, result_time)
+            return "Ensimmäinen vapaa aika tapahtumalle {} on: {}-{}\n" \
+                   "Osallistujia {}/{}" \
+                   .format(event_name, result_time[0][0], result_time[0][1], 
+                           result_time[1], len(times))
         return "Ei löydy yhteistä aikaa"
 
     return "Ei löydy tapahtumaa huoneesta"
+
+def object_to_local_datelist(obj):
+    datelist = obj["date"]
+    return list(map(lambda d: d.replace(tzinfo=timezone.utc).astimezone(),
+                    datelist))
+
+
+
+
+
+
+
 
