@@ -46,10 +46,10 @@ def tulokset(args, room_id, db):
         times = list(map(object_to_local_datelist, event_doc["times"]))
         result_time = scheduler.scheduler(times)
         if result_time is not None:
-            return "Ensimmäinen vapaa aika tapahtumalle {} on: {}\n" \
+            return "Ensimmäinen vapaa aika tapahtumalle {} on: {}-{}\n" \
                    "Osallistujia {}/{}" \
-                   .format(event_name, result_time[0], result_time[1],
-                           len(times))
+                   .format(event_name, result_time[0][0], result_time[0][1], 
+                           result_time[1], len(times))
         return "Ei löydy yhteistä aikaa"
 
     return "Ei löydy tapahtumaa huoneesta"

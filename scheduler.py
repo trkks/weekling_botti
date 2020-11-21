@@ -34,13 +34,13 @@ def test_scheduler():
     assert scheduler([[d1,d1]]) == None, \
            "The duplicate date was not returned"
 
-    passert(scheduler([[d1],[d1],[]]), (d1, 2), 
+    passert(scheduler([[d1],[d1],[]]), ((d1,d1), 2), 
         "The best possible date was not returned")
 
-    assert scheduler([[d1],[d1],[d1]]) == (d1, 3), \
+    assert scheduler([[d1],[d1],[d1]]) == ((d1,d1), 3), \
            "The only date between lists was not returned"
 
-    assert scheduler([[d2,d1], [d1]]) == (d1, 2), \
+    assert scheduler([[d2,d1], [d1]]) == ((d1,d1), 2), \
            "The shared date between lists was not returned"
 
     assert scheduler([[d1],[d2],[d3]]) == None, \
@@ -54,11 +54,13 @@ def test_scheduler():
 
     d4 = datetime.fromisoformat("2020-11-03T12:00:00.000+00:00")
 
-    assert scheduler([[d1,d2], [d3,d1,d2], [d2,d1,d4]]) == (d2, 3), \
+    assert scheduler([[d1,d2], [d3,d1,d2], [d2,d1,d4]]) == ((d2,d2), 3), \
            "The earliest shared date was not returned"
 
     success("Business-logic-specific cases")
     ########################################
+
+    # TODO Add variable-hour -tests
 
     print("!! SCHEDULER tests done.")
 
@@ -80,9 +82,6 @@ def test_find_spans():
     d1 = datetime.fromisoformat("2020-11-03T12:00:00.000+00:00")
     d2 = datetime.fromisoformat("2020-11-03T13:00:00.000+00:00")
 
-    #passert( find_spans([d1], 0), [(d1,d1)] ) ihanmitävaan vai fail?
-    # TODO PÄÄTETÄÄN: Pitäiskö palauttaa None toisena alkiona, jos etsitään 1
-    # tuntia?
     passert( find_spans([d1], 1), [(d1,d1)] )
     passert( find_spans([d1], 2), [] )
     passert( find_spans([d1,d2], 1), [(d1,d1), (d2,d2)] )
@@ -98,16 +97,15 @@ def test_find_spans():
     passert( find_spans([d1,d2,d3], 1), [(d1,d1), (d2,d2), (d3,d3)] )
     passert( find_spans([d1,d2,d3], 2), [(d1,d2), (d2,d3)] )
 
-    assert find_spans([d1,d2,d3,d4], 2) == [(d1,d2), (d2,d3), (d4,d5)]
+    assert find_spans([d1,d2,d3,d4,d5], 2) == [(d1,d2), (d2,d3), (d4,d5)]
 
     d6 = datetime.fromisoformat("2020-11-04T14:00:00.000+00:00")
     d7 = datetime.fromisoformat("2020-11-04T23:00:00.000+00:00")
     d8 = datetime.fromisoformat("2020-11-05T00:00:00.000+00:00")
 
     assert find_spans([d1,d2,d6], 2) == [(d1,d2)]
-    # TODO PÄÄTETÄÄN: Etsitäänkö päivänvaihteiden väliltä?, vaatisi varmaan
-    # todellisia pvmiä (nyt menee viikkonäkymästä "koordinaattein")
-    assert find_spans([d8,d7], 2) == [] 
+    # NOTE Jos kalenterista tehdään 24h, niin testiä pitää korjata
+    assert find_spans([d7,d8], 2) == [] 
 
     success("Cases with more than two times and between days")
     #######################################
@@ -135,62 +133,54 @@ def find_spans(times, hours=1):
     daily_times = groupby(times, key=lambda d: d.day)
     daily_times = map(lambda t: sorted(list(t[1])), daily_times)
 
-    """
-    Algoritmia:
+    spans = []
+    for hoursofday in daily_times:
+        left, right = 0, 1
+        start = left
+        while right <= len(hoursofday):
+            if right == len(hoursofday) \
+            or hoursofday[right].hour - hoursofday[left].hour != 1:
+                spans.append(get_spans(hoursofday[start:left+1], hours))
+                start = left+1
+            left += 1
+            right += 1
 
-    Alussa aina:
-    0. Saadaan aikalista `times` ja kuinka pitkiä pätkiä halutaan etsiä `hours`
-    1. 
-       1.1 Jos `hours` < 1, niin palautetaan tyhjä lista
-       1.2 Jos `hours` == 1, niin palautetaan samat ajat sopivassa muodossa
-       1.3 Luokitellaan ajat päivittäisiksi (-> ei tarkastelua päivien välillä)
-           ja järjestetään alalistat (tunnit kasvavassa järjestyksessä)
-    
-    2. Jokaisen päivän tuntilistaa kohti kerätään peräkkäiset pätkät
-       peräkkäiset = []
-        2.1 Aluksi tarvitaan apumuuttujat: 
-            vasen = 0,
-            oikea = 1,
-            tunteja_putkeen = 1
-        2.2 Käydään tuntilistaa t läpi eli while(t and oikea < len(t))
-            t = [1,2,3, 5,6,7,8, 10,11]
-            Jos t[oikea] - t[vasen] == 1:
-                tunteja_putkeen += 1
-            Muuten:
-                pätkä = t[0:oikea]
-                t = [oikea:]
-                peräkkäiset.append(pätkä)
-                oikea = -1
-                vasen = 0
-                tunteja_putkeen = 1
+    return list(chain.from_iterable(spans))
 
-            oikea += 1
-            vasen += 1
-    3. Tiedossa on eripituisia pätkiä, annetaan parametri jossa tietty numero,
-       numeron perusteella pitää löytää sen pituisia pätkiä. Pitää ottaa
-       huomioon että pidemmistä pätkistä voi saada useampia lyhyempiä pätkiä
- 
-    """
-    return []
+def get_spans(consecutive, hours):
+    l, r = 0, 1
+    spans = []
+    while r < len(consecutive):
+        if consecutive[r].hour - consecutive[l].hour == hours-1:
+            spans.append((consecutive[l], consecutive[r]))
+            l += 1
+        r += 1
+
+    return spans
+            
 
 def scheduler(entries, hours=1):
     # Remove duplicates from different entries
     all_dates = [list(set(user_entry)) for user_entry in entries]
-    # Flatten the list of lists of dates, 
+    # Find the wanted spans from all entries
+    all_spans = map(lambda l: find_spans(l, hours), all_dates)
+    # Flatten the list of lists of spans, 
     # eg. [[d1],[d2,d3],[d2]] -> [d1,d2,d3,d2]
-    all_dates = chain.from_iterable(all_dates)
-    # Sort the dates for grouping,
+    all_spans = chain.from_iterable(all_spans)
+    # Sort the spans for grouping,
     # eg. [d1,d2,d3,d2] -> [d1,d2,d2,d3]
-    all_dates = sorted(all_dates)
-    # Pick same dates into their own groups,
+    all_spans = sorted(all_spans, key=lambda x: x[0])
+    # Pick spans by days into their own groups,
     # eg. [d1,d2,d2,d3] -> [(d1, [d1]), (d2, [d2,d2]), (d3, [d3])]
-    date_groups = groupby(all_dates)
-    date_groups = [(k, list(g)) for k,g in date_groups]
-    # Pick the group that has most dates > 1
-    shared_date = max(date_groups, key=lambda g: len(list(g[1])), default=None)
-    # Select the first date in *time*
-    n = len(list(shared_date[1])) if shared_date is not None else 0
-    return (shared_date[0], n) \
+    span_groups = groupby(all_spans)
+    span_groups = [(k, list(g)) for k,g in span_groups]
+    # Pick the group that has most spans > 1
+    shared_span_group = max(span_groups, 
+                            key=lambda g: len(list(g[1])),
+                            default=None)
+    # Select the first span in *time*
+    n = len(list(shared_span_group[1])) if shared_span_group is not None else 0
+    return (shared_span_group[0], n) \
            if n > 1 \
            else None
 
@@ -198,4 +188,3 @@ def scheduler(entries, hours=1):
 if __name__ == "__main__":
     test_scheduler()
     test_find_spans()
-
