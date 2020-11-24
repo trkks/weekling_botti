@@ -32,6 +32,13 @@ def aloita(args, room_id, db):
            .format(event_name, host_name, query_string)
 
 def tulokset(args, room_id, db):
+    
+"""
+    !tulokset2 kahvi
+    !tulokset kahvi 2 3
+"""
+
+
     # Name for event must be specified
     event_name = args.strip()
     if len(event_name) == 0:
@@ -43,16 +50,20 @@ def tulokset(args, room_id, db):
     })
 
     if event_doc is not None:
+        days = ["Maanantai", "Tiistai", "Keskiviikko", "Torstai", "Perjantai",
+                "Lauantai", "Sunnuntai"]
         times = list(map(object_to_local_datelist, event_doc["times"]))
         result_time = scheduler.scheduler(times)
         if result_time is not None:
-            return "Ensimmäinen vapaa aika tapahtumalle {} on: {}-{}\n" \
-                   "Osallistujia {}/{}" \
-                   .format(event_name, result_time[0][0], result_time[0][1], 
-                           result_time[1], len(times))
+            return "'{}': {} {}-{} Osallistujia {}/{}" \
+                   .format(event_name, 
+                        days[result_time[0][0].day-1],
+                        result_time[0][0].hour, 
+                        result_time[0][1].hour+1, 
+                        result_time[1], len(times))
         return "Ei löydy yhteistä aikaa"
 
-    return "Ei löydy tapahtumaa huoneesta"
+    return f"Tapahtumaa '{event_name}' ei löydy huoneesta"
 
 def object_to_local_datelist(obj):
     datelist = obj["date"]
