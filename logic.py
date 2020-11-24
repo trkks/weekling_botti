@@ -31,14 +31,11 @@ def aloita(args, room_id, db):
     return "Varaa tästä tapahtumaan {} -> {}{}" \
            .format(event_name, host_name, query_string)
 
-def tulokset(args, room_id, db):
-    
 """
     !tulokset2 kahvi
     !tulokset kahvi 2 3
 """
-
-
+def tulokset(args, room_id, db):
     # Name for event must be specified
     event_name = args.strip()
     if len(event_name) == 0:
