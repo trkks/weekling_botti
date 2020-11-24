@@ -159,6 +159,8 @@ def get_spans(consecutive, hours):
     return spans
             
 
+# FIXME Jos joku on syöttänyt useampaan "ryhmään" sopivia aikoja, tämä poistuu
+# "parhaimmasta" ryhmästä ks. mongon "botteilutesti" 4. entry
 def scheduler(entries, hours=1):
     # Remove duplicates from different entries
     all_dates = [list(set(user_entry)) for user_entry in entries]
