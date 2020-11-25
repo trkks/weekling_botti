@@ -61,7 +61,7 @@ def pass_to_message_callback(client, db, jointime, join_hack_time):
             # TODO Listen to all joined rooms -> one bot to serve them all?
             #if room.room_id == client.room_id and event.sender != client.user_id:
             if room.room_id in client.rooms.keys() and event.sender != client.user_id:
-                msg = event.body
+                msg = event.body.strip()
                 print("event.body: {}".format(event.body))
                 if len(msg) > 1 and msg[0] == "!":
                     # Default message
