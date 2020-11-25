@@ -5,6 +5,7 @@ import io
 import sys
 import getpass
 import datetime
+from itertools import takewhile
 
 from pymongo import MongoClient
 from nio import (AsyncClient, MatrixRoom, RoomMessageText, InviteMemberEvent, 
@@ -60,7 +61,7 @@ def pass_to_message_callback(client, db, jointime, join_hack_time):
             # TODO Listen to all joined rooms -> one bot to serve them all?
             #if room.room_id == client.room_id and event.sender != client.user_id:
             if room.room_id in client.rooms.keys() and event.sender != client.user_id:
-                msg = event.body
+                msg = event.body.strip()
                 print("event.body: {}".format(event.body))
                 if len(msg) > 1 and msg[0] == "!":
                     # Default message
@@ -70,9 +71,13 @@ def pass_to_message_callback(client, db, jointime, join_hack_time):
                                           event.body)
 
                     msg = msg[1:]
+                    hours = 1
                     try:
                         command = msg[0:msg.index(" ")] 
                         args = msg[len(command):]
+                        if "_" in command:
+                            hours = int(command[command.index("_")+1:])
+                            command = msg[0:msg.index("_")] 
                     except ValueError:
                         command = None
                         args = ""
@@ -82,7 +87,7 @@ def pass_to_message_callback(client, db, jointime, join_hack_time):
                     if command == "aloita":
                         msg_to_send = logic.aloita(args, room.room_id, db)
                     elif command == "tulokset":
-                        msg_to_send = logic.tulokset(args, room.room_id, db)
+                        msg_to_send = logic.tulokset(hours, args, room.room_id, db)
 
                     if msg_to_send.strip():
                         await client.room_send(

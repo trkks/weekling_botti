@@ -60,7 +60,53 @@ def test_scheduler():
     success("Business-logic-specific cases")
     ########################################
 
-    # TODO Add variable-hour -tests
+                                # Thursday 10-13
+    d5  = datetime.fromisoformat("2020-11-04T10:00:00.000+00:00")
+    d6  = datetime.fromisoformat("2020-11-04T11:00:00.000+00:00")
+    d7  = datetime.fromisoformat("2020-11-04T12:00:00.000+00:00")
+                                # Sunday 8-11
+    d8  = datetime.fromisoformat("2020-11-07T08:00:00.000+00:00")
+    d9  = datetime.fromisoformat("2020-11-07T09:00:00.000+00:00")
+    d10 = datetime.fromisoformat("2020-11-07T10:00:00.000+00:00")
+
+    passert( scheduler([ [d5,d6,d7], [d5,d7],
+                         [d5,d7,d8,d9,d10],
+                         [d8] ], 2),
+                        None,
+                        "Should have returned none (even)") 
+
+    passert( scheduler([ [d5,d7], [d5,d6,d7],
+                         [d6,d7,d8,d9,d10],
+                         [d8,d9], [d8,d9] ], 2),
+                       ((d8,d9), 3),
+                       "Span with most people not returned (even)") 
+
+    passert( scheduler([ [d5,d6,d7],  [d5,d6,d7],
+                         [d5,d6,d7,d8,d9,d10],
+                         [d8,d9,d10], [d8,d9,d10] ], 2),
+                        ((d5,d6), 3),
+                        "Earliest shared span not returned") 
+
+    passert( scheduler([ [d5,d7],  [d5,d6,d7],
+                         [d6,d7,d8,d9,d10],
+                         [d8,d9], [d8,d9] ], 3),
+                        None,
+                        "Should have returned none") 
+
+    passert( scheduler([ [d5,d6,d7], [d5,d6,d7],
+                         [d5,d6,d7,d8,d9,d10],
+                         [d8,d9,d10] ], 3),
+                        ((d5,d7), 3),
+                        "Span with most people not returned (odd)") 
+
+    passert( scheduler([ [d5,d6,d7],  [d5,d6,d7],
+                         [d5,d6,d7,d8,d9,d10],
+                         [d8,d9,d10], [d8,d9,d10] ], 3),
+                        ((d5,d7), 3),
+                        "Earliest shared span not returned") 
+
+    success("Variable-hour-tests")
+
 
     print("!! SCHEDULER tests done.")
 
@@ -73,7 +119,6 @@ def test_find_spans():
     assert find_spans([], 0) == []
     assert find_spans([], 1) == []
     passert(find_spans([], 2), [])
-
 
     success("Base cases")
     #####################
@@ -107,6 +152,8 @@ def test_find_spans():
     # NOTE Jos kalenterista tehdään 24h, niin testiä pitää korjata
     assert find_spans([d7,d8], 2) == [] 
 
+    # NOTE Tests do not include non-sorted entries
+
     success("Cases with more than two times and between days")
     #######################################
 
@@ -126,11 +173,9 @@ def find_spans(times, hours=1):
         return []
     if hours == 1:
         return list(map(lambda t: (t, t), times)) # NOTE useless change to list
-    if not times or len(times) < hours:
-        return []
         
     # Group times by their day
-    daily_times = groupby(times, key=lambda d: d.day)
+    daily_times = groupby(sorted(times), key=lambda d: d.day)
     daily_times = map(lambda t: sorted(list(t[1])), daily_times)
 
     spans = []
@@ -186,5 +231,5 @@ def scheduler(entries, hours=1):
 
 
 if __name__ == "__main__":
-    test_scheduler()
     test_find_spans()
+    test_scheduler()

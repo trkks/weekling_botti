@@ -31,11 +31,7 @@ def aloita(args, room_id, db):
     return "Varaa tästä tapahtumaan {} -> {}{}" \
            .format(event_name, host_name, query_string)
 
-"""
-    !tulokset2 kahvi
-    !tulokset kahvi 2 3
-"""
-def tulokset(args, room_id, db):
+def tulokset(hours, args, room_id, db):
     # Name for event must be specified
     event_name = args.strip()
     if len(event_name) == 0:
@@ -50,7 +46,7 @@ def tulokset(args, room_id, db):
         days = ["Maanantai", "Tiistai", "Keskiviikko", "Torstai", "Perjantai",
                 "Lauantai", "Sunnuntai"]
         times = list(map(object_to_local_datelist, event_doc["times"]))
-        result_time = scheduler.scheduler(times)
+        result_time = scheduler.scheduler(times, hours)
         if result_time is not None:
             return "'{}': {} {}-{} Osallistujia {}/{}" \
                    .format(event_name, 
