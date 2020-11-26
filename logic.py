@@ -12,7 +12,7 @@ def help():
     >!tulokset_<kesto tunneissa väliltä 0-24> <tapahtuman nimi> # Sama kuin !tulokset, mutta vaihtelevilla tunneilla
     """
 
-NGROK_FILE = "ngrokosoite.txt"
+NGROK_FILE = "../weekling-web/webback/ngrokosoite.txt"
 
 def aloita(args, room_id, db):
     # Name for event must be specified
