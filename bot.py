@@ -59,8 +59,11 @@ def pass_to_message_callback(client, db, jointime, join_hack_time):
     async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
         if hemppa_hack(event.body, jointime, join_hack_time):
             # TODO Listen to all joined rooms -> one bot to serve them all?
-            #if room.room_id == client.room_id and event.sender != client.user_id:
-            if room.room_id in client.rooms.keys() and event.sender != client.user_id:
+            print("event.sender == {}".format(event.sender))
+            print("client.user_id == {}".format(client.user_id))
+            # FIXME user_id is set only when used client.login()
+            if room.room_id in client.rooms.keys() \
+            and event.sender != client.user_id:
                 msg = event.body.strip()
                 print("event.body: {}".format(event.body))
                 if len(msg) > 1 and msg[0] == "!":
@@ -71,23 +74,29 @@ def pass_to_message_callback(client, db, jointime, join_hack_time):
                                           event.body)
 
                     msg = msg[1:]
+                    command = None
+                    args = ""
                     hours = 1
-                    try:
-                        command = msg[0:msg.index(" ")] 
-                        args = msg[len(command):]
-                        if "_" in command:
-                            hours = int(command[command.index("_")+1:])
-                            command = msg[0:msg.index("_")] 
-                    except ValueError:
-                        command = None
-                        args = ""
-                    print("command: {}".format(msg))
+                    if " " in msg:
+                        try:
+                            command = msg[0:msg.index(" ")] 
+                            args = msg[len(command):]
+                            if "_" in command:
+                                hours = int(command[command.index("_")+1:])
+                                command = msg[0:msg.index("_")] 
+                        except ValueError:
+                            command = None
+                            args = ""
+                    print("msg: '{}'".format(msg))
 
                     # Choose the logic
                     if command == "aloita":
                         msg_to_send = logic.aloita(args, room.room_id, db)
                     elif command == "tulokset":
                         msg_to_send = logic.tulokset(hours, args, room.room_id, db)
+                    elif msg == "help":
+                        print("helping")
+                        msg_to_send = logic.help()
 
                     if msg_to_send.strip():
                         await client.room_send(

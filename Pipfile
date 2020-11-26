@@ -9,7 +9,6 @@ verify_ssl = true
 matrix-nio = "*"
 pymongo = "*"
 dnspython = "*"
-#pyngrok = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "3.7"
