@@ -5,8 +5,14 @@ import scheduler
 import os
 import io
 
+def help():
+    return """
+    >!aloita <tapahtuman nimi>
+    >!tulokset <tapahtuman nimi> # Antaa vastanneille sopivan yhden (1) tunnin ajan jos yhteisiä aikoja on > 1
+    >!tulokset_<kesto tunneissa väliltä 0-24> <tapahtuman nimi> # Sama kuin !tulokset, mutta vaihtelevilla tunneilla
+    """
 
-NGROK_FILE = "../weekling-web/webback/ngrokosoite.txt"
+NGROK_FILE = "ngrokosoite.txt"
 
 def aloita(args, room_id, db):
     # Name for event must be specified
@@ -14,19 +20,19 @@ def aloita(args, room_id, db):
     if len(event_name) == 0:
         return ""
 
-    db.objects.insert_one({
+    event_id = str(db.objects.insert_one({
         "room_id": room_id,
         "event_name": event_name,
         "times": []
-    })
+    }).inserted_id)
 
     # Get ngrok url
     with io.open(NGROK_FILE, "r", encoding="utf-8") as fp:
         host_name = fp.readline().strip()
 
     # Pass meta-info to server
-    query_string = "?event={}&room={}".format(quote_plus(event_name),
-                                              quote_plus(room_id))
+    query_string = "?id={}&event={}".format(quote_plus(event_id),
+                                            quote_plus(event_name))
 
     return "Varaa tästä tapahtumaan {} -> {}{}" \
            .format(event_name, host_name, query_string)
