@@ -204,25 +204,35 @@ def get_spans(consecutive, hours):
     return spans
             
 
-def scheduler(entries, hours=1):
+def scheduler(entries, hours=1, get_all=False):
     # Remove duplicates from different entries
     all_dates = [list(set(user_entry)) for user_entry in entries]
     # Find the wanted spans from all entries
     all_spans = map(lambda l: find_spans(l, hours), all_dates)
     # Flatten the list of lists of spans, 
-    # eg. [[d1],[d2,d3],[d2]] -> [d1,d2,d3,d2]
+    # eg. [[s1],[s2,s3],[s2]] -> [s1,s2,s3,s2]
     all_spans = chain.from_iterable(all_spans)
     # Sort the spans for grouping,
-    # eg. [d1,d2,d3,d2] -> [d1,d2,d2,d3]
+    # eg. [s1,s2,s3,s2] -> [s1,s2,s2,s3]
     all_spans = sorted(all_spans, key=lambda x: x[0])
     # Pick spans by days into their own groups,
-    # eg. [d1,d2,d2,d3] -> [(d1, [d1]), (d2, [d2,d2]), (d3, [d3])]
+    # eg. [s1,s2,s2,s3] -> [(s1, [s1]), (s2, [s2,s2]), (s3, [s3])]
     span_groups = groupby(all_spans)
     span_groups = [(k, list(g)) for k,g in span_groups]
     # Pick the group that has most spans > 1
     shared_span_group = max(span_groups, 
                             key=lambda g: len(list(g[1])),
                             default=None)
+
+    # Decide whether to return list of best spans or the single earliest span
+    if get_all:
+        # Return all spans, with participants of best length
+        best_length = len(shared_span_group[1])
+        return map(
+            lambda x: (x[0], len(x[1])),
+            filter(lambda x: len(x[1]) == best_length, span_groups)
+        )
+
     # Select the first span in *time*
     n = len(list(shared_span_group[1])) if shared_span_group is not None else 0
     return (shared_span_group[0], n) \

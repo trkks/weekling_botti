@@ -5,12 +5,14 @@ import scheduler
 import os
 import io
 
-def help():
-    return """
-    >!aloita <tapahtuman nimi>
-    >!tulokset <tapahtuman nimi> # Antaa vastanneille sopivan yhden (1) tunnin ajan jos yhteisiä aikoja on > 1
-    >!tulokset_<kesto tunneissa väliltä 0-24> <tapahtuman nimi> # Sama kuin !tulokset, mutta vaihtelevilla tunneilla
-    """
+def ohje():
+    return \
+        "Ajanvarauksen aloittaminen:\n" \
+        "!aloita <tapahtuman nimi>\n" \
+        "Tuloksien pyytäminen:\n" \
+        "!tulokset <tapahtuman nimi>\n" \
+        "Tuloksien pyytäminen useammalle tunnille:\n" \
+        "!tulokset_<kesto tunneissa väliltä 1-24> <tapahtuman nimi>"
 
 NGROK_FILE = "ngrokosoite.txt"
 
@@ -39,13 +41,6 @@ def aloita(args, room_id, db):
 
 def tulokset(hours, args, room_id, db):
     
-    """
-    !tulokset2 kahvi
-    !tulokset kahvi 2 3
-    """
-    # !tulokset_
-    #100 vuotis kahvit
-
     # Name for event must be specified
     event_name = args.strip()
     if len(event_name) == 0:
@@ -71,6 +66,56 @@ def tulokset(hours, args, room_id, db):
         return "Ei löydy yhteistä aikaa"
 
     return f"Tapahtumaa '{event_name}' ei löydy huoneesta"
+
+def kaikki(hours, args, room_id, db):
+    # Name for event must be specified
+    event_name = args.strip()
+    if len(event_name) == 0:
+        return ""
+
+    event_doc = db.objects.find_one({
+        "room_id": room_id,
+        "event_name": event_name
+    })
+
+    if event_doc is not None:
+        # TODO Make this a dict, when using "relative days"
+        days = ["Maanantai", "Tiistai", "Keskiviikko", "Torstai", "Perjantai",
+                "Lauantai", "Sunnuntai"]
+        times = list(map(object_to_local_datelist, event_doc["times"]))
+        result_times = scheduler.scheduler(times, hours, get_all=True)
+        print(list(result_times))
+        if result_times is not None:
+            """
+            Maanantai 11-12, 12-13, 15-16
+            Torstai 11-12
+            Sunnuntai 12-13, 15-16
+            """
+            result_times = sorted(result_times, key=lambda x: x[0])
+            result_times = groupby(result_times, key=lambda x: x[0].day)
+
+            spanstring = "" 
+            #NOTE
+            n = -1 # STUPID HACK
+            #NOTE
+            for day, timesofday in result_times:
+                spanstring += days[day-1]
+                n = 0
+                for time in timesofday:
+                    n += 1
+                    spanstring += "{}-{}".format(time[0][0].hour,
+                                                 time[0][0].hour+1)
+                spanstring += "\n"
+                
+            return "'{}': Kaikki osallistujilla {}/{}:\n{}" \
+                   .format(event_name, 
+                           n,#result_times[0][1], 
+                           len(times), 
+                           spanstring)
+        return "Ei löydy yhteistä aikaa"
+
+    return f"Tapahtumaa '{event_name}' ei löydy huoneesta"
+
 
 def object_to_local_datelist(obj):
     datelist = obj["date"]
