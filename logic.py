@@ -12,7 +12,9 @@ def ohje():
         "Tuloksien pyytäminen:\n" \
         "!tulokset <tapahtuman nimi>\n" \
         "Tuloksien pyytäminen useammalle tunnille:\n" \
-        "!tulokset_<kesto tunneissa väliltä 1-24> <tapahtuman nimi>"
+        "!tulokset_<kesto tunneissa väliltä 1-24> <tapahtuman nimi>\n" \
+        "Lista vaihtoehtoisista ajoista, joissa suurin osallistujamäärä:\n" \
+        "!kaikki <tapahtuman nimi>"
 
 NGROK_FILE = "ngrokosoite.txt"
 
@@ -57,15 +59,15 @@ def tulokset(hours, args, room_id, db):
         times = list(map(object_to_local_datelist, event_doc["times"]))
         result_time = scheduler.scheduler(times, hours)
         if result_time is not None:
-            return "'{}': {} {}-{} Osallistujia {}/{}" \
+            return "'{}': {} {}-{}, osallistujia {}/{}" \
                    .format(event_name, 
                         days[result_time[0][0].day-1],
                         result_time[0][0].hour, 
                         result_time[0][1].hour+1, 
                         result_time[1], len(times))
-        return "Ei löydy yhteistä aikaa"
+        return f"'{event_name}': Ei löydy yhteistä aikaa"
 
-    return f"Tapahtumaa '{event_name}' ei löydy huoneesta"
+    return f"'{event_name}': Tapahtumaa ei löydy huoneesta"
 
 def kaikki(hours, args, room_id, db):
     # Name for event must be specified
@@ -84,42 +86,83 @@ def kaikki(hours, args, room_id, db):
                 "Lauantai", "Sunnuntai"]
         times = list(map(object_to_local_datelist, event_doc["times"]))
         result_times = scheduler.scheduler(times, hours, get_all=True)
-        print(list(result_times))
         if result_times is not None:
             """
             Maanantai 11-12, 12-13, 15-16
             Torstai 11-12
             Sunnuntai 12-13, 15-16
+
+
+            result_times = [ ((alku1, loppu1), lkm_väli1), 
+                             ((alku2, loppu2), lkm_väli2)  ... ]
             """
-            result_times = sorted(result_times, key=lambda x: x[0])
-            result_times = groupby(result_times, key=lambda x: x[0].day)
+            result_times = sorted(result_times, key=lambda x: x[0][0])
+            result_times = groupby(result_times, key=lambda x: x[0][0].day)
+            """
+            result_times = [ 
+                (pvä1, [
+                    ((alku1, loppu1), lkm_väli), 
+                    ((alku2, loppu2), lkm_väli) ]),
+                (pvä2, [
+                    ((alku3, loppu3), lkm_väli), 
+                    ((alku4, loppu4), lkm_väli), 
+                    ((alku5, loppu5), lkm_väli) ]) 
+            ]
+
+            """
 
             spanstring = "" 
             #NOTE
             n = -1 # STUPID HACK
             #NOTE
             for day, timesofday in result_times:
-                spanstring += days[day-1]
-                n = 0
+                spanstring += "{}: ".format(days[day-1])
                 for time in timesofday:
-                    n += 1
-                    spanstring += "{}-{}".format(time[0][0].hour,
-                                                 time[0][0].hour+1)
+                    n = time[1] # save the amount of entries every time
+                    spanstring += "{}-{}; ".format(time[0][0].hour,
+                                                   time[0][1].hour + 1)
                 spanstring += "\n"
                 
-            return "'{}': Kaikki osallistujilla {}/{}:\n{}" \
+            return "'{}': Kaikki sopivat ajat osallistujamäärällä {}/{}:\n{}" \
                    .format(event_name, 
-                           n,#result_times[0][1], 
+                           n,
                            len(times), 
                            spanstring)
-        return "Ei löydy yhteistä aikaa"
+        return f"'{event_name}': Ei löydy yhteisiä aikoja"
 
-    return f"Tapahtumaa '{event_name}' ei löydy huoneesta"
+    return f"'{event_name}': Tapahtumaa ei löydy huoneesta"
 
 
 def object_to_local_datelist(obj):
     datelist = obj["date"]
-    return list(map(lambda d: d.replace(tzinfo=timezone.utc).astimezone(),
+    weekday_now = 3 #datetime.now().isoweekday() # weekday from 1 to 7
+    
+    """
+    Tietokanta || Scheduler-logiikka
+ [6]Ma == 1    -> Jos Tiistai niin Ma == 7
+ [0]Ti == 2
+ [1]Ke == 3
+ [2]To == 4
+ [3]Pe == 5
+ [4]La == 6
+ [5]Su == 7
+    """
+    relative_weekdays = []
+    for i in range(weekday_now, weekday_now+7):
+        k = i % 7
+        relative_weekdays.append(k if k != 0 else 7)
+
+    print(relative_weekdays)
+
+    #for date in datelist:
+    #    date.replace(tzinfo=timezone.utc).astimezone()
+    #    #date.replace()
+    #
+    #return datelist
+
+    return list(map(lambda d: d.replace(day=relative_weekdays[d.day-1],
+                                        tzinfo=timezone.utc)
+                                        .astimezone(),
                     datelist))
 
 
