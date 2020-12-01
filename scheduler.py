@@ -228,7 +228,7 @@ def scheduler(entries, hours=1, get_all=False):
     best_span = max(span_groups, key=lambda x: x[1], default=None)
 
     # Decide whether to return list of best spans or the single earliest span
-    if get_all:
+    if get_all and best_span:
         # Return all spans, with participants of best length
         best_length = best_span[1]
         return filter(lambda x: x[1] == best_length, span_groups)
