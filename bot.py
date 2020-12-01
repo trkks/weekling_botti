@@ -94,9 +94,11 @@ def pass_to_message_callback(client, db, jointime, join_hack_time):
                         msg_to_send = logic.aloita(args, room.room_id, db)
                     elif command == "tulokset":
                         msg_to_send = logic.tulokset(hours, args, room.room_id, db)
-                    elif msg == "help":
+                    elif command == "kaikki":
+                        msg_to_send = logic.kaikki(hours, args, room.room_id, db)
+                    elif msg == "ohje":
                         print("helping")
-                        msg_to_send = logic.help()
+                        msg_to_send = logic.ohje()
 
                     if msg_to_send.strip():
                         await client.room_send(
@@ -137,7 +139,7 @@ async def main() -> None:
     # NOTE Hemppa-hack
     jointime = datetime.datetime.now() # HACKHACKHACK to avoid running old 
                                        # commands after join
-    join_hack_time = 10  # Seconds
+    join_hack_time = 5  # Seconds
 
     """
     Create the client-object with correct info and login 
