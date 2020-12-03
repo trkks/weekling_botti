@@ -54,9 +54,8 @@ def tulokset(hours, args, room_id, db):
     })
 
     if event_doc is not None:
-        transformation, days = create_object_to_local_datelist()
+        times, days = get_relative_times(event_doc["times"])
 
-        times = list(map(transformation, event_doc["times"]))
         result_time = scheduler.scheduler(times, hours)
         if result_time is not None:
             return "'{}': {} {}-{}, osallistujia {}/{}" \
@@ -81,9 +80,8 @@ def kaikki(hours, args, room_id, db):
     })
 
     if event_doc is not None:
-        transformation, days = create_object_to_local_datelist()
+        times, days = get_relative_times(event_doc["times"])
 
-        times = list(map(transformation, event_doc["times"]))
         result_times = scheduler.scheduler(times, hours, get_all=True)
         if result_times is not None:
             """
@@ -131,9 +129,31 @@ def kaikki(hours, args, room_id, db):
 
     return f"'{event_name}': Tapahtumaa ei löydy huoneesta"
 
-def create_object_to_local_datelist():
-    day_names = ["Maanantai", "Tiistai", "Keskiviikko", "Torstai", "Perjantai",
-                 "Lauantai", "Sunnuntai"]
+def get_relative_times(dbtimes):
+    """"
+    Convert db-format suitable for scheduler and create a relative weekday-list
+    returns: (list of datetime lists, relative weekdays)
+    """
+
+    # Remove object-wrapping
+    times = map(lambda obj: obj["date"], dbtimes)
+
+    # Apply the conversion to machine-local-timezone for all datetimes
+    times = list(map(lambda ds: 
+            list(map(lambda d:d.replace(tzinfo=timezone.utc).astimezone(),ds)),
+        times))
+
+    # filter out datetimes that have passed (in hours) on current day
+    daynow = datetime.now().replace(tzinfo=timezone.utc).astimezone()
+    hournow = daynow.hour
+    weekdaynow = daynow.isoweekday() # weekday from 1 to 7
+    # TODO Why does >= work here?
+    times = map(lambda ds: 
+            filter(lambda d: d.day != weekdaynow or d.hour >= hournow, ds),
+        times)
+
+    # Change day-values for scheduler's logic:
+
     """
     Jos Keskiviikko:
     Ma == 1 -> 6
@@ -144,17 +164,17 @@ def create_object_to_local_datelist():
     La == 6 -> 4
     Su == 7 -> 5
     """
-    d = datetime.now().isoweekday() # weekday from 1 to 7
-    relative_days = list(range(7-d+2, 7+1)) + list(range(1,7-d+2))
+    relative_days = list(
+        range(7-weekdaynow+2, 7+1)) + list(range(1,7-weekdaynow+2))
 
-    def object_to_local_datelist(obj):
-        datelist = obj["date"]
-        
-        return list(map(lambda d: d.replace(day=relative_days[d.day-1],
-                                            tzinfo=timezone.utc)
-                                            .astimezone(),
-                        datelist))
+    # Apply the conversion to relative day
+    times = list(map(lambda ds:
+            list(map(lambda d: d.replace(day=relative_days[d.day-1]), ds)),
+        times))
 
+    # Make a dict, which tells weekdays from the now converted day-values
+    day_names = ["Maanantai", "Tiistai", "Keskiviikko", "Torstai", "Perjantai",
+                 "Lauantai", "Sunnuntai"]
     relative_day_names = dict(zip(relative_days, day_names))
 
-    return (object_to_local_datelist, relative_day_names)
+    return (times, relative_day_names)
