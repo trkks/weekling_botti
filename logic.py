@@ -144,12 +144,12 @@ def get_relative_times(dbtimes):
         times))
 
     # filter out datetimes that have passed (in hours) on current day
-    daynow = datetime.now().replace(tzinfo=timezone.utc).astimezone()
+    daynow = datetime.now()
     hournow = daynow.hour
     weekdaynow = daynow.isoweekday() # weekday from 1 to 7
-    # TODO Why does >= work here?
+
     times = map(lambda ds: 
-            filter(lambda d: d.day != weekdaynow or d.hour >= hournow, ds),
+            filter(lambda d: d.day != weekdaynow or d.hour > hournow, ds),
         times)
 
     # Change day-values for scheduler's logic:
