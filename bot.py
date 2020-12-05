@@ -1,17 +1,14 @@
 import asyncio
 import json
 import io
-#import os
-import sys
 import getpass
 import datetime
-from itertools import takewhile
+import logic
 
 from pymongo import MongoClient
 from nio import (AsyncClient, MatrixRoom, RoomMessageText, InviteMemberEvent, 
-                 LoginResponse, LoginError, JoinError)
+                 JoinError)
 
-import logic
 
 # TODO handle logouts
 
@@ -56,7 +53,7 @@ def pass_to_invite_callback(client):
 
 def pass_to_message_callback(client, db, jointime, join_hack_time):
 
-    async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
+    async def message_callback(room: MatrixRoom, event: RoomMessageText):
         if hemppa_hack(event.body, jointime, join_hack_time):
             print("event.sender == {}".format(event.sender))
             print("client.user_id == {}".format(client.user_id))
@@ -109,10 +106,6 @@ def pass_to_message_callback(client, db, jointime, join_hack_time):
 
 
 def load_bot_info():
-    """
-    Load the login and room info from external file and 
-    return them as a dict or None if failed
-    """
     # Load info from json-file
     # NOTE the file is to be filled locally, do not add to git!
     with io.open(LOGIN_FILE, "r", encoding="utf-8") as fp:
@@ -137,9 +130,9 @@ async def main() -> None:
     join_hack_time = 5  # Seconds
 
     """
-    Create the client-object with correct info and login 
-    if an access token is not found, login with password 
-    Return the client and login-response
+    Create the client-object with correct info, set callbacks for reacting 
+    to events and login. If an access token is not found in config-file,
+    ask for password.
     """
     client = AsyncClient(bot_info["homeserver"])
    
@@ -161,13 +154,11 @@ async def main() -> None:
         client.access_token = access_token
         # Manually set user id because not calling client.login()
         client.user_id = user_id
-        #client.device_id = bot_info["device_id"]
     else: 
         password = getpass.getpass()
         response = await client.login(password)
         # Save info to file for future use
         bot_info["access_token"] = response.access_token
-        #bot_info["device_id"] = response.device_id
         try:
             with io.open(LOGIN_FILE, "w", encoding="utf-8") as fp:
                 fp.write(json.dumps(bot_info))

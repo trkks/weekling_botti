@@ -95,11 +95,12 @@ def kaikki(hours, args, room_id, db):
             Sunnuntai 12-13, 15-16
 
 
-            result_times = [ ((alku1, loppu1), lkm_väli1), 
-                             ((alku2, loppu2), lkm_väli2)  ... ]
+            result_times = [ ((alku1, loppu1), lkm_väli), 
+                             ((alku2, loppu2), lkm_väli)  ... ]
             """
             result_times = sorted(result_times, key=lambda x: x[0][0])
             result_times = groupby(result_times, key=lambda x: x[0][0].day)
+            result_times = [(k, list(g)) for k,g in result_times]
             """
             result_times = [ 
                 (pvä1, [
@@ -113,14 +114,13 @@ def kaikki(hours, args, room_id, db):
 
             """
 
+            # Get number of participants here for printing
+            n = result_times[0][1][0][1]
+
             spanstring = "" 
-            #NOTE
-            n = -1 # STUPID HACK
-            #NOTE
             for day, timesofday in result_times:
                 spanstring += "{}: ".format(days[day])
                 for time in timesofday:
-                    n = time[1] # save the amount of entries on every loop
                     spanstring += "{}-{}; ".format(time[0][0].hour,
                                                    time[0][1].hour + 1)
                 spanstring += "\n"
