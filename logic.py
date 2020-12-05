@@ -24,11 +24,16 @@ def aloita(args, room_id, db):
     if len(event_name) == 0:
         return ""
 
-    event_id = str(db.objects.insert_one({
-        "room_id": room_id,
-        "event_name": event_name,
-        "times": []
-    }).inserted_id)
+    event_id = str(db.objects.update_one(
+        {
+            "room_id": room_id,
+            "event_name": event_name
+        },
+        {   "$set" : {
+                "times": [] 
+            }
+        }, 
+        upsert=True).upserted_id)
 
     # Get ngrok url
     with io.open(NGROK_FILE, "r", encoding="utf-8") as fp:
