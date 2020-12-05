@@ -58,21 +58,14 @@ def pass_to_message_callback(client, db, jointime, join_hack_time):
 
     async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
         if hemppa_hack(event.body, jointime, join_hack_time):
-            # TODO Listen to all joined rooms -> one bot to serve them all?
             print("event.sender == {}".format(event.sender))
             print("client.user_id == {}".format(client.user_id))
-            # FIXME user_id is set only when used client.login()
+            # TODO Listen to all joined rooms -> one bot to serve them all?
             if room.room_id in client.rooms.keys() \
             and event.sender != client.user_id:
                 msg = event.body.strip()
                 print("event.body: {}".format(event.body))
                 if len(msg) > 1 and msg[0] == "!":
-                    # Default message
-                    msg_to_send = "Message received in room {}\n {} | {}" \
-                                  .format(room.display_name,
-                                          room.user_name(event.sender),
-                                          event.body)
-
                     msg = msg[1:]
                     command = None
                     args = ""
@@ -90,6 +83,8 @@ def pass_to_message_callback(client, db, jointime, join_hack_time):
                     print("msg: '{}'".format(msg))
 
                     # Choose the logic
+                    msg_to_send = None
+
                     if command == "aloita":
                         msg_to_send = logic.aloita(args, room.room_id, db)
                     elif command == "tulokset":
@@ -100,7 +95,7 @@ def pass_to_message_callback(client, db, jointime, join_hack_time):
                         print("helping")
                         msg_to_send = logic.ohje()
 
-                    if msg_to_send.strip():
+                    if msg_to_send:
                         await client.room_send(
                             room_id=room.room_id,
                             message_type="m.room.message",
@@ -146,7 +141,7 @@ async def main() -> None:
     if an access token is not found, login with password 
     Return the client and login-response
     """
-    client = AsyncClient(bot_info["homeserver"], bot_info["user_id"])
+    client = AsyncClient(bot_info["homeserver"])
    
     client.add_event_callback(
         pass_to_invite_callback(client),
@@ -161,8 +156,11 @@ async def main() -> None:
  
     # Ask password from command line, press enter to use stored access token
     access_token = bot_info["access_token"]
-    if len(access_token) != 0: 
+    user_id = bot_info["user_id"]
+    if len(access_token) != 0 and len(user_id) != 0: 
         client.access_token = access_token
+        # Manually set user id because not calling client.login()
+        client.user_id = user_id
         #client.device_id = bot_info["device_id"]
     else: 
         password = getpass.getpass()
@@ -177,10 +175,6 @@ async def main() -> None:
             print(f"Writing login-info failed: {e}")
 
     print(f"Logged in as {client}")
-
-    # This is from the tutorial:
-    # If you made a new room and haven't joined as that user, you can use
-    # await client.join("your-room-id")
 
     await client.sync_forever(timeout=30000, full_state=False) # milliseconds
 
