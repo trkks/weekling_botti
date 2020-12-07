@@ -1,9 +1,8 @@
+import io
+import scheduler
 from urllib.parse import quote_plus
 from datetime import datetime, timezone
 from itertools import groupby
-import scheduler
-import os
-import io
 
 def ohje():
     return \
@@ -24,16 +23,35 @@ def aloita(args, room_id, db):
     if len(event_name) == 0:
         return ""
 
-    event_id = str(db.objects.update_one(
+    # Check if event of same name already exists in room. Insert new one if not
+   
+    cursor = db.objects.find(
         {
             "room_id": room_id,
             "event_name": event_name
-        },
-        {   "$set" : {
+        }
+    )
+
+    try:
+        event_id_obj = cursor[0]["_id"]
+        # Erase old times-data from existing event
+        db.objects.update_one(
+            {
+                "_id": event_id_obj,
+            },
+            {   "$set" : {
+                    "times": [] 
+                }
+            })
+        event_id = str(event_id_obj)
+    except IndexError:
+        # Create an all new event-document
+        event_id = str(db.objects.insert_one(
+            {
+                "room_id": room_id,
+                "event_name": event_name,
                 "times": [] 
-            }
-        }, 
-        upsert=True).upserted_id)
+            }).inserted_id)
 
     # Get ngrok url
     with io.open(NGROK_FILE, "r", encoding="utf-8") as fp:
@@ -76,7 +94,7 @@ def tulokset(hours, args, room_id, db):
 def kaikki(hours, args, room_id, db):
     # Name for event must be specified
     event_name = args.strip()
-    if len(event_name) == 0:
+    if len(event_name) == 0 or 24 < hours < 1:
         return ""
 
     event_doc = db.objects.find_one({

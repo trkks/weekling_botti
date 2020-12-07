@@ -29,6 +29,9 @@ def hemppa_hack(body, jointime, join_hack_time):
 def pass_to_invite_callback(client):
 
     async def invite_callback(room, event):
+        print(f"{type(event)} : "\
+              f"{datetime.datetime.fromtimestamp(event.server_timestamp/1000)}")
+
         result = await client.join(room.room_id)
         if type(result) == JoinError:
             print(f"Error joining room {room.room_id}")
@@ -53,7 +56,10 @@ def pass_to_invite_callback(client):
 
 def pass_to_message_callback(client, db, jointime, join_hack_time):
 
-    async def message_callback(room: MatrixRoom, event: RoomMessageText):
+    async def message_callback(room, event):
+        print(f"{type(event)} : "\
+              f"{datetime.datetime.fromtimestamp(event.server_timestamp/1000)}")
+
         if hemppa_hack(event.body, jointime, join_hack_time):
             print("event.sender == {}".format(event.sender))
             print("client.user_id == {}".format(client.user_id))
