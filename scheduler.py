@@ -1,6 +1,5 @@
-from datetime import (datetime, timedelta)
-from itertools import (chain, groupby, dropwhile, combinations, tee)
-from functools import reduce
+from datetime import datetime
+from itertools import chain, groupby
 
 
 # Utilities for testing:
@@ -200,31 +199,7 @@ def test_find_spans():
     d5 = datetime.fromisoformat("2020-11-03T17:00:00.000+00:00")
     d6 = datetime.fromisoformat("2020-11-04T14:00:00.000+00:00")
     d7 = datetime.fromisoformat("2020-11-04T23:00:00.000+00:00")
-
     d8 = datetime.fromisoformat("2020-11-05T00:00:00.000+00:00")
-    d01 = datetime.fromisoformat("2020-11-05T01:00:00.000+00:00")
-    d02 = datetime.fromisoformat("2020-11-05T02:00:00.000+00:00")
-    d03 = datetime.fromisoformat("2020-11-05T03:00:00.000+00:00")
-    d04 = datetime.fromisoformat("2020-11-05T04:00:00.000+00:00")
-    d05 = datetime.fromisoformat("2020-11-05T05:00:00.000+00:00")
-    d06 = datetime.fromisoformat("2020-11-05T06:00:00.000+00:00")
-    d07 = datetime.fromisoformat("2020-11-05T07:00:00.000+00:00")
-    d08 = datetime.fromisoformat("2020-11-05T08:00:00.000+00:00")
-    d09 = datetime.fromisoformat("2020-11-05T09:00:00.000+00:00")
-    d10 = datetime.fromisoformat("2020-11-05T10:00:00.000+00:00")
-    d11 = datetime.fromisoformat("2020-11-05T11:00:00.000+00:00")
-    d12 = datetime.fromisoformat("2020-11-05T12:00:00.000+00:00")
-    d13 = datetime.fromisoformat("2020-11-05T13:00:00.000+00:00")
-    d14 = datetime.fromisoformat("2020-11-05T14:00:00.000+00:00")
-    d15 = datetime.fromisoformat("2020-11-05T15:00:00.000+00:00")
-    d16 = datetime.fromisoformat("2020-11-05T16:00:00.000+00:00")
-    d17 = datetime.fromisoformat("2020-11-05T17:00:00.000+00:00")
-    d18 = datetime.fromisoformat("2020-11-05T18:00:00.000+00:00")
-    d19 = datetime.fromisoformat("2020-11-05T19:00:00.000+00:00")
-    d20 = datetime.fromisoformat("2020-11-05T20:00:00.000+00:00")
-    d21 = datetime.fromisoformat("2020-11-05T21:00:00.000+00:00")
-    d22 = datetime.fromisoformat("2020-11-05T22:00:00.000+00:00")
-    d23 = datetime.fromisoformat("2020-11-05T23:00:00.000+00:00")
 
     # FIXME Acts unexpectedly with duplicates -> set() before calling?
     # FIXME should return just 1 span? Currently the next test would succeed:
@@ -252,10 +227,13 @@ def test_find_spans():
     # NOTE Business logic specific: with 24h calendar this test needs changing:
     lsassert( find_spans([d7,d8], 2), [] )
 
-    lsassert( find_spans([d8, d01, d02, d03, d04, d05, d06, d07, d08, d09,
-                          d10, d11, d12, d13, d14, d15, d16, d17, d18, d19,
-                          d20, d21, d22, d23], 24), 
-              [(d8, d23)] ) 
+    span24h = [d8]
+    for i in range(1,24):
+        span24h.append(
+            datetime.fromisoformat(f"2020-11-05T{i:02}:00:00.000+00:00")
+        )
+
+    lsassert( find_spans(span24h, 24), [(d8, d23)] ) 
 
     success("Cases with more than two times and between days")
     ##########################################################
@@ -321,7 +299,6 @@ def scheduler(entries, hours=1, get_all=False):
     all_spans = chain.from_iterable(all_spans)
     # Sort the spans for grouping,
     # eg. [s1,s2,s3,s2] -> [s1,s2,s2,s3]
-    # NOTE data not uniform => key by day and hour (see test on line 80)
     all_spans = sorted(all_spans, key=lambda x: (x[0].day, x[0].hour))
     # Pick spans by days into their own groups,
     # eg. [s1,s2,s2,s3] -> [(s1, [s1]), (s2, [s2,s2]), (s3, [s3])]
