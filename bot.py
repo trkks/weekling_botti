@@ -29,8 +29,8 @@ def hemppa_hack(body, jointime, join_hack_time):
 def pass_to_invite_callback(client):
 
     async def invite_callback(room, event):
-        print(f"{type(event)} : "\
-              f"{datetime.datetime.fromtimestamp(event.server_timestamp/1000)}")
+        #print(f"{type(event)} : "\
+        #      f"{datetime.datetime.fromtimestamp(event.server_timestamp/1000)}")
 
         result = await client.join(room.room_id)
         if type(result) == JoinError:
